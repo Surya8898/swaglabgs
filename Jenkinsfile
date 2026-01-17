@@ -21,34 +21,46 @@ pipeline {
 
     stage('Install Dependencies') {
       steps {
-        sh 'npm ci'
+        script {
+          if (isUnix()) {
+            sh 'npm ci'
+          } else {
+            bat 'npm ci'
+          }
+        }
       }
     }
 
     stage('Prepare Allure Metadata') {
       steps {
-        sh 'node scripts/allure-env.js'
-        sh 'node scripts/allure-executor.js'
-        sh 'cp -r allure-report/history allure-results/history || true'
+        script {
+          if (isUnix()) {
+            sh 'node scripts/allure-env.js'
+            sh 'node scripts/allure-executor.js'
+          } else {
+            bat 'node scripts\\allure-env.js'
+            bat 'node scripts\\allure-executor.js'
+          }
+        }
       }
     }
 
     stage('Run Playwright Tests') {
       steps {
-        sh 'npx playwright test'
-      }
-    }
-
-    stage('Generate Allure Report') {
-      steps {
-        sh 'npx allure generate allure-results --clean -o allure-report'
+        script {
+          if (isUnix()) {
+            sh 'npx playwright test'
+          } else {
+            bat 'npx playwright test'
+          }
+        }
       }
     }
   }
 
   post {
     always {
-      allure includeProperties: false, results: [[path: 'allure-results']]
+      allure results: [[path: 'allure-results']]
     }
   }
 }

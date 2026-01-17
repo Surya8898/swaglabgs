@@ -69,14 +69,11 @@ pipeline {
         }
     }
 
-    post {
+   post {
         always {
             allure([
-                includeProperties: false,
-                jdk: '',
-                properties: [],
-                reportBuildPolicy: 'ALWAYS',
-                results: [[path: 'allure-results']]
+                results: [[path: 'allure-results']],
+                reportBuildPolicy: 'ALWAYS'
             ])
         }
     }

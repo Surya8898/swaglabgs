@@ -1,66 +1,74 @@
 pipeline {
-  agent any
+    agent any
 
-  tools {
-    nodejs 'node18'
-  }
-
-  environment {
-    ENV = 'QA'
-    BASE_URL = 'https://www.saucedemo.com'
-    BROWSER = 'chromium'
-  }
-
-  stages {
-
-    stage('Checkout Code') {
-      steps {
-        checkout scm
-      }
+    tools {
+        nodejs 'node18'
+        allure 'allure'
     }
 
-    stage('Install Dependencies') {
-      steps {
-        script {
-          if (isUnix()) {
-            sh 'npm ci'
-          } else {
-            bat 'npm ci'
-          }
+    environment {
+        ENV = 'QA'
+        BASE_URL = 'https://www.saucedemo.com'
+        BROWSER = 'chromium'
+    }
+
+    stages {
+
+        stage('Checkout Code') {
+            steps {
+                checkout scm
+            }
         }
-      }
-    }
 
-    stage('Prepare Allure Metadata') {
-      steps {
-        script {
-          if (isUnix()) {
-            sh 'node scripts/allure-env.js'
-            sh 'node scripts/allure-executor.js'
-          } else {
-            bat 'node scripts\\allure-env.js'
-            bat 'node scripts\\allure-executor.js'
-          }
+        stage('Install Dependencies') {
+            steps {
+                bat 'npm ci'
+            }
         }
-      }
-    }
 
-    stage('Run Playwright Tests') {
-      steps {
-        script {
-          if (isUnix()) {
-            sh 'npx playwright test'
-          } else {
-            bat 'npx playwright test'
-          }
+        stage('Install Playwright Browsers') {
+            steps {
+                bat 'npx playwright install'
+            }
         }
-      }
-    }
-  }
 
-  post {
-    always {
-      allure results: [[path: 'allure-results']]
+        stage('Prepare Allure Metadata') {
+            steps {
+                bat 'node scripts\\allure-env.js'
+                bat 'node scripts\\allure-executor.js'
+
+                // Preserve history if exists
+                bat '''
+                if exist allure-report\\history (
+                    xcopy /E /I /Y allure-report\\history allure-results\\history
+                )
+                '''
+            }
+        }
+
+        stage('Run Playwright Tests') {
+            steps {
+                bat 'npx playwright test'
+            }
+        }
+
+        stage('Generate Allure Report') {
+            steps {
+                bat 'allure generate allure-results --clean -o allure-report'
+            }
+        }
     }
-  }
+
+    post {
+        always {
+            allure([
+                includeProperties: false,
+                jdk: '',
+                properties: [],
+                reportBuildPolicy: 'ALWAYS',
+                results: [[path: 'allure-results']],
+                tool: 'allure'
+            ])
+        }
+    }
 }

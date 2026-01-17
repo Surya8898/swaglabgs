@@ -6,13 +6,12 @@ pipeline {
     }
 
     environment {
-        ENV = 'QA'
         BASE_URL = 'https://www.saucedemo.com'
     }
 
     stages {
 
-        stage('Checkout Code') {
+        stage('Checkout') {
             steps {
                 checkout scm
             }
@@ -42,21 +41,7 @@ pipeline {
             }
         }
 
-        stage('Prepare Allure Metadata') {
-            steps {
-                script {
-                    if (isUnix()) {
-                        sh 'node scripts/allure-env.js'
-                        sh 'node scripts/allure-executor.js'
-                    } else {
-                        bat 'node scripts\\allure-env.js'
-                        bat 'node scripts\\allure-executor.js'
-                    }
-                }
-            }
-        }
-
-        stage('Run Playwright Tests') {
+        stage('Run Tests') {
             steps {
                 script {
                     if (isUnix()) {
@@ -67,14 +52,23 @@ pipeline {
                 }
             }
         }
+
+        stage('Generate Allure Report') {
+            steps {
+                script {
+                    if (isUnix()) {
+                        sh 'npx allure generate allure-results --clean -o allure-report'
+                    } else {
+                        bat 'npx allure generate allure-results --clean -o allure-report'
+                    }
+                }
+            }
+        }
     }
 
-   post {
+    post {
         always {
-            allure([
-                results: [[path: 'allure-results']],
-                reportBuildPolicy: 'ALWAYS'
-            ])
+            archiveArtifacts artifacts: 'allure-report/**', fingerprint: true
         }
     }
 }
